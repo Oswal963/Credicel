@@ -15,7 +15,7 @@ class MaterialCatalogoCredicel {
         this.classes = opt.classes ?? null;
         this.selectCount = opt.selectCount ?? true;
         this.pagination = opt.pagination ?? true;
-        this.pagCount = opt.pagCount ?? 9;
+        this.pagCount = opt.pagCount ?? 3;
         this.method = opt.method ?? "POST";
         this.noDataMessage = opt.noDataMessage ?? "Ningún elemento que mostrar";
         this.timeout = null;
@@ -96,6 +96,20 @@ class MaterialCatalogoCredicel {
         this.getData();
     }
 
+    loader(message = false){
+        if (message !== false){
+            Swal.fire({
+                html: `<img src="../../../img/alertas/pensando.gif" alt="" width="40%"><p class="AlertaTD">${message}</p>`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false
+            });
+        } else {
+            document.querySelector('.swal2-container').remove();
+            document.body.style.overflow = 'auto';
+        }
+    }
+
     getCheckbox(nombre, id){
         if (this.element == null) return;
         let checked = "";
@@ -126,11 +140,11 @@ class MaterialCatalogoCredicel {
         }
 
         let before = this.element?.style.position;
-        if (typeof loader === "function" && showLoader){
+        if (showLoader){
             if (this.element !== null) {
                 this.element.style.position = "relative";
             }
-            loader("Cargando datos", this.element);
+            this.loader("Buscando equipos disponibles");
         }
         this.preGetData(this);
         if (this.url){
@@ -160,9 +174,9 @@ class MaterialCatalogoCredicel {
                     this.fetchTotal();
                 }
                 this.data = data.data;
-                if (typeof loader === "function" && showLoader){
+                if (showLoader){
                     if (this.element !== null) this.element.style.position = before;
-                    loader();
+                    this.loader();
                 }
                 if (this.afterGetData(this)) this.render();
                 this.fetching = false;
@@ -175,6 +189,7 @@ class MaterialCatalogoCredicel {
         }
     }
     async fetchTotal(){
+        return;
         let f = await fetch(this.url, {
             method: this.method,
             body: JSON.stringify({
@@ -203,6 +218,7 @@ class MaterialCatalogoCredicel {
             return;
         }
         let container = document.createElement("div");
+        container.style.paddingTop = "3%";
         // table.classList.add("MaterialTableAXS"); Aqui añadimos estilos para el catálogo
         if (this.classes !== null){
             container.classList.add(...this.classes);
@@ -227,7 +243,8 @@ class MaterialCatalogoCredicel {
                     if (keyElement[0] === 'img') {
                         elemento = document.createElement('img');
                         elemento.classList.add('card-img-top');
-                        elemento.src = "https://www.credicel.mx/tiendas/models/getImageCotizador.php?v=780344a743beb0a0804e1f93d87d40cd";
+                        //elemento.src = "https://www.credicel.mx/tiendas/models/getImageCotizador.php?v=780344a743beb0a0804e1f93d87d40cd";
+                        elemento.src = this.cell(row[keyElement[1]], row, keyElement[1]);
                         ficha.appendChild(elemento);
                     } else if (keyElement[1] === 'actions') {
                         let actionsElement = document.createElement(keyElement[0]);
@@ -247,15 +264,11 @@ class MaterialCatalogoCredicel {
                 ficha.appendChild(actions);
                 container.appendChild(ficha);
             }
+        } else {
+            let divNoDataMessage = document.createElement("div");
+            divNoDataMessage.innerHTML = this.noDataMessage;
+            container.appendChild(divNoDataMessage);
         }
-        // }else {
-        //     tr = this.rowHandler(document.createElement("tr"), {});
-        //     let td = document.createElement("td");
-        //     td.innerHTML = this.noDataMessage;
-        //     td.setAttribute("colspan", this.elements.length)
-        //     tr.appendChild(td);
-        //     tbody.appendChild(tr);
-        // }
 
         if ((this.pagination || this.selectCount) && this.data.length > 0){
             let ulContainer = document.createElement('ul');
@@ -263,28 +276,6 @@ class MaterialCatalogoCredicel {
             let colCount = this.elements.length;
             let select;
 
-            // if (this.selectCount){
-            //     let selecttd = document.createElement("td");
-            //     selecttd.setAttribute("colspan", this.elements.length > 4 ? 2 : 1);
-            //     select = document.createElement("select");
-            //     select.setAttribute("id", "selectionCount")
-            //     for (const option of this.countToDisplay) {
-            //         let opt = document.createElement("option")
-            //         opt.text = option;
-            //         opt.value = option;
-            //         if (option == this.count) {
-            //             opt.selected = true;
-            //         }
-            //         select.appendChild(opt);
-            //     }
-            //     selecttd.appendChild(select);
-            //     tr.appendChild(selecttd);
-            //
-            //     let total = document.createElement("td")
-            //     total.innerHTML = `de  <span id="materialTableAXS">${this.total == "?" ? "muchas" : this.total}</span>`;
-            //     total.classList.add("grey-text")
-            //     tr.appendChild(total);
-            // }
 
             if (this.pagination){
                 let paginationtd = document.createElement("nav");
@@ -296,10 +287,9 @@ class MaterialCatalogoCredicel {
                 if (pages <= this.pagCount){
                     min = 1;
                     max = pages;
-                }else {
-                    min = this.page - Math.floor(this.pagCount/2);
-                    max = this.page + Math.ceil(this.pagCount/2);
-
+                } else {
+                    min = parseInt(this.page) - Math.floor(this.pagCount/2);
+                    max = parseInt(this.page) + Math.ceil(this.pagCount/2);
                     if (min <= 0){
                         min = 1;
                         max = this.pagCount;
@@ -323,13 +313,12 @@ class MaterialCatalogoCredicel {
                 // }
 
                 //<i className="material-icons">chevron_left</i>
-                let prev = this.createLi(this.page == min ? "disabled" : "", 'Anterior');
-                ulContainer.appendChild(prev);
+                let first = this.createLi(this.page == min ? "disabled" : "", 'Inicio');
+                ulContainer.appendChild(first);
                 if(this.page != min){
-                    prev.addEventListener("click", (e)=>{
-                        if (this.page == 1) return;
-                        this.page = this.page - 1
-                        localStorage.setItem(window.location.pathname + "/TablePage", this.page);
+                    first.addEventListener("click", (e)=>{
+                        this.page = 1
+                        localStorage.setItem(window.location.pathname + "/TablePage", this.page)
                         this.getData();
                     })
                 }
@@ -345,15 +334,14 @@ class MaterialCatalogoCredicel {
                     ulContainer.appendChild(li);
                 }
 
-                let next = this.createLi(this.page == max ? "disabled" : "", 'Siguiente');
-                ulContainer.appendChild(next);
+                let last = this.createLi(this.page == max ? "disabled" : "", 'Fin');
+                ulContainer.appendChild(last);
                 if (this.page != max){
-                    next.addEventListener("click", (e)=>{
-                        if (this.page == 1) return;
-                        this.page = this.page + 1
-                        localStorage.setItem(window.location.pathname + "/TablePage", this.page);
-                        this.getData();
-                    })
+                        last.addEventListener("click", (e)=>{
+                            this.page = pages
+                            localStorage.setItem(window.location.pathname + "/TablePage", this.page);
+                            this.getData();
+                        })
                 }
 
 
@@ -406,7 +394,7 @@ class MaterialCatalogoCredicel {
     }
 
     getIds(estatus){
-        loader("Obteniendo datos");
+        this.loader("Obteniendo datos");
         if (this.url){
             fetch(this.url, {
                 method: this.method,
@@ -425,7 +413,7 @@ class MaterialCatalogoCredicel {
                 }
             }).then(data => {
                 this.selectedIds = data.data;
-                loader();
+                this.loader();
                 this.render();
             })
         }else if (this.data.length == 0){
